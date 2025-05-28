@@ -1,0 +1,79 @@
+- name: --Block tasks for jboss start ---
+  block:
+    - name: -- Jboss - Domain Status --
+      become: true     
+      become_user: was
+      shell: |
+          source /home/was/.bash_profile && /usr/jboss/AppServer/bin/jboss-cli.sh -c --controller=$HOSTNAME --command="/host=master:read-attribute(name=host-state)" 
+      ignore_errors: yes
+      register: domain_result
+
+    - name: -- Jboss - 'running' match  --
+      set_fact:
+        running_output: "{{ 'running' in domain_result.stdout }}"
+    - name: -- Jboss - 'running' match et --
+      set_fact:
+        jboss_status: "RUNNING"
+      when:
+      - running_output
+    - name: -- Jboss - 'starting' match  --
+      set_fact:
+        starting_output: "{{ 'starting' in domain_result.stdout or 'waiting' in domain_result.stdout }}"
+    - name: -- Jboss - 'starting' match  --
+      set_fact:
+        jboss_status: "STARTING"
+      when:
+      - starting_output
+    - name: -- Jboss - Closed match  --
+      set_fact:
+        closed_output: "{{ 'The controller is not available' in domain_result.stdout }}"
+    - name: -- Jboss - Closed match et --
+      set_fact:
+        jboss_status: "CLOSED"
+      when:
+      - closed_output
+      
+    - name: -- Jboss - Starting --
+      become: true
+      become_user: was
+      ignore_errors: yes
+      shell: |
+        source /home/was/.bash_profile && nohup /usr/jboss/AppServer/bin/domain.sh > /dev/null 2>&1 &
+        if [ $? == 0 ]; then 
+          echo "jboss start is succesful"
+        else
+          echo "jboss start  is failed"
+        fi
+      register: jboss_start
+      when: 
+      - closed_output
+
+
+    - name: -- Jboss - Domain got the start, waiting for all the applications to get ready. --
+      become: true
+      become_user: was
+      shell: |
+        source /home/was/.bash_profile && /usr/jboss/AppServer/bin/jboss-cli.sh -c --controller=$HOSTNAME --command="/host=master:read-attribute(name=host-state)"
+
+      register: result
+      until: "'running' in result.stdout"
+      retries: 30
+      delay: 10
+      when:
+      - closed_output
+
+    - name: -- Jboss - JAVA|WAS Process Control --
+      shell: ps -ef | grep [j]ava | grep was | wc -l
+      register: java_process_controller_again
+
+    - name: -- Jboss - 'running' match et --
+      set_fact:
+        jboss_status: "RUNNING"
+      when:
+      - java_process_controller_again.stdout != "0"
+
+    - name: -- Jboss - 'closed' match et --
+      set_fact:
+        jboss_status: "CLOSED"
+      when:
+      - java_process_controller_again.stdout == "0"

@@ -1,0 +1,67 @@
+- name: --- Block tasks for jboss stop action ---
+  block:
+    - name:  -- Jboss - Domain Status --
+      become: true    
+      become_user: was
+      shell:
+        cmd: |
+          source /home/was/.bash_profile && /usr/jboss/AppServer/bin/jboss-cli.sh -c --controller=$HOSTNAME --command="/host=master:read-attribute(name=host-state)"
+      ignore_errors: yes
+      register: domain_result
+
+    - name: -- Jboss - 'running' match  --
+      set_fact:
+        running_output: "{{ 'running' in domain_result.stdout }}"
+
+    - name: -- Jboss - 'starting' match  --
+      set_fact:
+        starting_output: "{{ 'starting' in domain_result.stdout or 'waiting' in domain_result.stdout }}"
+
+    - name: -- Jboss - Kapalı mı match  --
+      set_fact:
+        closed_output: "{{ 'The controller is not available' in domain_result.stdout }}"
+
+    - name: --Jboss status ---
+      become: true
+      become_user: was
+      shell: |
+        ps -ef | grep [j]ava | grep was | awk -F'[][]' '/Server:/ {print $2}' | awk -F: '{print $2}' | sort > /tmp/jvm_status.txt
+
+    - name: -- Jboss - Stopping
+      become: true
+      become_user: was
+      ignore_errors: yes
+      shell: |
+        source /home/was/.bash_profile && /usr/jboss/AppServer/bin/jboss-cli.sh -c --controller=$HOSTNAME --command="shutdown --host=master"
+        if [ $? == 0 ]; then
+          echo "jboss stop is successful"
+        else
+          echo "jboss stop  is failed "
+        fi
+      register: jboss_stop
+      when:
+      - running_output
+
+
+    - name: -- Jboss - Closing the Applications... --
+      become: true
+      become_user: was
+      shell: |
+        ps -ef | grep [j]ava | grep was | wc -l
+      register: result_stop
+      until: result_stop.stdout == "0"
+      ignore_errors: true
+      retries: 20
+      delay: 3
+
+    - name: -- Jboss - Process Controller PID Killing --
+      become: true
+      become_user: was
+      shell: |
+        killall java -s 9
+      when:  
+      - result_stop.stdout != "0"
+
+    - name: -- Jboss - JAVA|WAS Process Kontrol --
+      shell: ps -ef | grep [j]ava | grep was | wc -l
+      register: java_process_controller_again

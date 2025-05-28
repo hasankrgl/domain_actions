@@ -1,0 +1,18 @@
+##JBOSS İŞLEMLERİ 
+
+- name: JB (Cep Sube)
+  hosts: localhost
+  order: sorted
+  become: yes
+  become_user: was
+  gather_facts: no
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - block:
+        - name: Import tasks
+          include_tasks: "./tasks/{{islem}}.yml"
+          when:
+            - islem is defined
+            - islem | length > 0
+   

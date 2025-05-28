@@ -1,0 +1,54 @@
+- name: -- Block tasks for ctg start ---
+  block:
+    - name: -- CTG - Copy "startCTG_Ans.sh" script to home directory as "/vhosting/scripts/startCTG_Ans.sh" --
+      become: true
+      become_user: ctg
+      copy:
+        src: "startCTG_Ans.sh"
+        dest: "/tmp/scripts/startCTG_Ans.sh"
+        owner: ctg
+        mode: '0755'    
+    - name: -- CTG - CTG Status --
+      become: true     
+      become_user: ctg
+      become_method: dzdo
+      shell: ps -ef|grep ctg | grep /opt/IBM/cicstg/ |grep -v grep| wc -l
+      ignore_errors: yes
+      register: ctg_result
+
+    - name: -- CTG - Execute the "startCTG_Ans.sh" --
+      become: true
+      become_user: ctg
+      shell: |
+        nohup /usr/bin/ksh /tmp/scripts/startCTG_Ans.sh > /dev/null 2>&1 &
+      when:
+      - ctg_result.stdout == "0"
+
+    - name: -- CTG - CTG|ctg Process Kontrol --
+      shell: ps -ef|grep ctg | grep /opt/IBM/cicstg/ |grep -v grep| wc -l
+      become: true
+      become_user: ctg
+      register: ctg_process_controller_again
+      retries: 5
+      delay: 5
+
+
+    - name: -- CTG - 'running' --
+      set_fact:
+        CTG_status: "RUNNING"
+      when:
+      - ctg_process_controller_again.stdout != "0"
+
+    - name: -- CTG - Kapalı mı  --
+      set_fact:
+        CTG_status: "CLOSED"
+      when:
+      - ctg_process_controller_again.stdout == "0"
+
+
+    - name: -- CTG - Delete the script file from /tmp/scripts --
+      become: true
+      become_user: ctg
+      file:
+        path: /tmp/scripts/startCTG_Ans.sh
+        state: absent

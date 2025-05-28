@@ -1,0 +1,61 @@
+- name: -- Block tasks for ctg stop ---
+  block:
+    - name: -- CTG - Copy "stopCTG_Ans.sh" script to home directory as "/tmp/scripts/stopCTG_Ans.sh" --
+      become: true
+      become_user: ctg
+      copy:
+        src: "stopCTG_Ans.sh"
+        dest: "/tmp/scripts/stopCTG_Ans.sh"
+        owner: ctg
+        mode: '0755'    
+
+    ### STATUS ÇIKTILARI İÇİN 
+    - name: -- CTG - CTG Status --
+      become: true     
+      become_user: ctg
+      become_method: dzdo
+      shell:  ps -ef|grep ctg | grep /opt/IBM/cicstg/ |grep -v grep| wc -l
+      ignore_errors: yes
+      register: ctg_result
+
+    - name: -- CTG - Execute the "stopCTG_Ans.sh" --
+      become: true
+      become_user: ctg
+      shell: |
+        nohup /usr/bin/ksh /tmp/scripts/stopCTG_Ans.sh > /dev/null 2>&1 &
+      when:
+      - ctg_result.stdout != "0"
+
+    - name: -- CTG - Delete the script file from /tmp/scripts --
+      become: true
+      become_user: ctg
+      file:
+        path: /tmp/scripts/stopCTG_Ans.sh
+        state: absent
+
+    ### BU KISIM CONSOLE'A ÇIKTI BASMAK İÇİN CHECK ETTİRİYORUM ###
+    - name: -- CTG - CTG|ctg Process Kontrol --
+      shell: ps -ef|grep ctg | grep /opt/IBM/cicstg/ |grep -v grep| wc -l
+      register: ctg_process_controller_again
+      become: true
+      become_user: ctg
+      become_method: dzdo
+      retries: 5
+      delay: 5
+
+
+    - name: -- CTG - 'running' --
+      become: true
+      become_user: ctg
+      set_fact:
+        CTG_status: "RUNNING"
+      when:
+      - ctg_process_controller_again.stdout != "0"
+
+    - name: -- CTG - Kapalı mı  --
+      become: true
+      become_user: ctg
+      set_fact:
+        CTG_status: "CLOSED"
+      when:
+      - ctg_process_controller_again.stdout == "0"
