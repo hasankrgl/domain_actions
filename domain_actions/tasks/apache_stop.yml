@@ -2,24 +2,21 @@
   block:
     - name: -- IHS - Starting --
       become: true
-      become_user: www
-      become_method: dzdo
+      become_user: web
       shell: |
          /usr/IBMIHS/bin/apachectl -k stop
       ignore_errors: true
       register: apache_start_result
 
-    - name: -- IHS - IBMIHS|WWW Process Kontrol --
+    - name: -- IHS - IBMIHS|Web Process Kontrol --
       become: true
-      become_user: www
-      become_method: dzdo
+      become_user: web
       shell: sleep 10 && ps -ef|grep httpd|grep -v grep|wc -l
       register: ihs_process_controller_again
 
     - name: -- IHS - 'running' --
       become: true
-      become_user: www
-      become_method: dzdo
+      become_user: web
       set_fact:
         IHS_status: "RUNNING"
       when:
@@ -27,8 +24,7 @@
 
     - name: -- IHS - Kapalı mı  --
       become: true
-      become_user: www
-      become_method: dzdo
+      become_user: web
       set_fact:
         IHS_status: "CLOSED"
       when:
