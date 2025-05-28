@@ -1,6 +1,6 @@
 ##JBOSS İŞLEMLERİ 
 
-- name: JB (Cep Sube)
+- name: Make your choice !!!
   hosts: localhost
   order: sorted
   become: yes
