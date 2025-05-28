@@ -11,7 +11,7 @@
   tasks:
     - block:
         - name: Import tasks
-          include_tasks: "./tasks/{{islem}}.yml"
+          include_tasks: "./tasks/{{action}}.yml"
           when:
             - islem is defined
             - islem | length > 0
