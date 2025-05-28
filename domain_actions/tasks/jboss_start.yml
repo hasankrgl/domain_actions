@@ -11,7 +11,7 @@
     - name: -- Jboss - 'running' match  --
       set_fact:
         running_output: "{{ 'running' in domain_result.stdout }}"
-    - name: -- Jboss - 'running' match et --
+    - name: -- Jboss - 'running' match  --
       set_fact:
         jboss_status: "RUNNING"
       when:
@@ -27,7 +27,7 @@
     - name: -- Jboss - Closed match  --
       set_fact:
         closed_output: "{{ 'The controller is not available' in domain_result.stdout }}"
-    - name: -- Jboss - Closed match et --
+    - name: -- Jboss - Closed match --
       set_fact:
         jboss_status: "CLOSED"
       when:
@@ -40,7 +40,7 @@
       shell: |
         source /home/was/.bash_profile && nohup /usr/jboss/AppServer/bin/domain.sh > /dev/null 2>&1 &
         if [ $? == 0 ]; then 
-          echo "jboss start is succesful"
+          echo "jboss start is successful"
         else
           echo "jboss start  is failed"
         fi
@@ -66,13 +66,13 @@
       shell: ps -ef | grep [j]ava | grep was | wc -l
       register: java_process_controller_again
 
-    - name: -- Jboss - 'running' match et --
+    - name: -- Jboss - 'running' match --
       set_fact:
         jboss_status: "RUNNING"
       when:
       - java_process_controller_again.stdout != "0"
 
-    - name: -- Jboss - 'closed' match et --
+    - name: -- Jboss - 'closed' match  --
       set_fact:
         jboss_status: "CLOSED"
       when:
